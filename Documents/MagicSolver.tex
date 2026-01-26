@@ -1,0 +1,102 @@
+\textbackslash documentclass{[}12pt,a4paper{]}\{article\}
+\textbackslash usepackage{[}utf8{]}\{inputenc\}
+\textbackslash usepackage{[}italian{]}\{babel\}
+\textbackslash usepackage\{amsmath\}
+\textbackslash usepackage\{amsfonts\}
+\textbackslash usepackage\{enumitem\}
+\textbackslash usepackage\{geometry\}
+\textbackslash geometry\{margin=2.5cm\}
+
+\% Rimuove l\textquotesingle indentazione automatica dei paragrafi per
+un look più moderno
+\textbackslash setlength\{\textbackslash parindent\}\{0pt\}
+\textbackslash setlength\{\textbackslash parskip\}\{1em\}
+
+\textbackslash title\{\textbackslash textbf\{Progetto MagicSolver\}\}
+\textbackslash author\{\} \textbackslash date\{\}
+
+\textbackslash begin\{document\}
+
+\textbackslash maketitle
+
+\% Generazione automatica dell\textquotesingle indice
+\textbackslash tableofcontents \textbackslash newpage
+
+\textbackslash section\{Introduzione\} Il Cubo di Rubik è il rompicapo
+più famoso della storia, icona intramontabile e simbolo degli anni
+\textquotesingle80. Venne inventato dall\textquotesingle architetto e
+professore ungherese \textbackslash textbf\{Ernő Rubik nel 1974\}. Si
+tratta di un poliedro regolare presentante 6 facce, ognuna con un colore
+differente, composte da 9 quadratini organizzati in una griglia \$3
+\textbackslash times 3 \textbackslash times 3\$.
+
+Negli anni sono nate tantissime variazioni del cubo classico, come il
+\textbackslash textit\{Mirror Cube\}, il
+\textbackslash textit\{Pyraminx\} o il più essenziale \$1
+\textbackslash times 1 \textbackslash times 1\$, ma la versione più
+iconica rimane il \$3 \textbackslash times 3 \textbackslash times 3\$.
+Dal punto di vista computazionale, rappresenta un problema combinatorio
+di elevata complessità: ogni rotazione genera un nuovo stato del
+sistema. Il numero totale di configurazioni possibili è di circa \$4.3
+\textbackslash times 10\^{}\{19\}\$.
+
+Con uno spazio degli stati così vasto e un unico stato obiettivo
+(\textbackslash textit\{goal state\}), può
+un\textquotesingle intelligenza artificiale risolvere questo problema in
+modo efficiente? Il progetto \textbackslash textbf\{MagicSolver\} si
+occupa di rispondere a questo dilemma.
+
+\textbackslash section\{Descrizione dell\textquotesingle agente\}
+
+\textbackslash subsection\{Obiettivi\} Lo scopo di questo progetto è
+creare un\textquotesingle IA capace di
+``giocare\textquotesingle\textquotesingle{} con un Cubo di Rubik e di
+risolvere i rompicapo lasciati in sospeso per anni sugli scaffali.
+
+La sfida principale risiede nell\textquotesingle ampiezza dello spazio
+degli stati; poiché esiste un solo stato di risoluzione, è estremamente
+improbabile che il cubo venga completato attraverso mosse casuali senza
+l\textquotesingle ausilio di un algoritmo strutturato. Sviluppare un
+agente in grado di navigare questo spazio combinatorio fornisce
+importanti intuizioni sulla risoluzione di problemi complessi ad ampia
+scala.
+
+\textbackslash subsection\{Specifica PEAS\} Per definire
+l\textquotesingle architettura dell\textquotesingle agente, utilizziamo
+il framework PEAS (\textbackslash textit\{Performance, Environment,
+Actuators, Sensors\}):
+
+\textbackslash begin\{itemize\} \textbackslash item
+\textbackslash textbf\{Performance\}: L\textquotesingle algoritmo viene
+valutato in base al numero totale di mosse eseguite per raggiungere lo
+stato finito. \textbackslash item \textbackslash textbf\{Environment\}:
+L\textquotesingle insieme di tutti i possibili stati del cubo.
+\textbackslash item \textbackslash textbf\{Actuators\}: Le rotazioni
+possibili (orarie e antiorarie) per ogni riga e colonna del cubo.
+\textbackslash item \textbackslash textbf\{Sensors\}: Interfaccia con il
+cubo di rubik scomposto in una rappresentazione 2D.
+\textbackslash end\{itemize\}
+
+\textbackslash subsubsection\{Caratteristiche
+dell\textquotesingle ambiente\} \textbackslash begin\{itemize\}
+\textbackslash item \textbackslash textbf\{Singolo agente\}: Solo
+l\textquotesingle IA agisce sul cubo. \textbackslash item
+\textbackslash textbf\{Totalmente osservabile\}: Ogni faccia e colore
+sono visibili all\textquotesingle agente. \textbackslash item
+\textbackslash textbf\{Deterministico\}: Ogni azione porta a uno stato
+unico e certo. \textbackslash item \textbackslash textbf\{Statico\}:
+L\textquotesingle ambiente non cambia mentre l\textquotesingle agente
+sta deliberando. \textbackslash item
+\textbackslash textbf\{Sequenziale\}: La mossa attuale influenza le
+configurazioni future. \textbackslash end\{itemize\}
+
+\textbackslash subsection\{Analisi del problema\} \% Qui puoi inserire i
+dettagli tecnici sulla ricerca nello spazio degli stati o
+l\textquotesingle algoritmo scelto (es. A*, BFS, Kociemba)
+L\textquotesingle analisi si concentra sulla navigazione di un grafo in
+cui i nodi rappresentano le configurazioni del cubo e gli archi
+rappresentano le rotazioni. Data la dimensione dello spazio degli stati,
+la ricerca cieca è impraticabile, richiedendo l\textquotesingle uso di
+euristiche o algoritmi di ricerca informata.
+
+\textbackslash end\{document\}
