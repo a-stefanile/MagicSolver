@@ -1,12 +1,11 @@
 import numpy as np
 import multiprocessing as mp
 import time
-import os
 from RubiksCube import RubiksCube
 
 
 class DataSetGenerator:
-    def __init__(self, total_samples=2000000, max_moves=20):
+    def __init__(self, total_samples=300000, max_moves=14):
         self.total_samples = total_samples
         self.max_moves = max_moves
         self.num_workers = mp.cpu_count()
@@ -31,9 +30,18 @@ class DataSetGenerator:
             n_scrambles = np.random.randint(1, self.max_moves + 1)
 
             sequence = []
-            for _ in range(n_scrambles):
+
+            last_move_info = (None, None)
+
+            while len(sequence) < n_scrambles:
                 move = np.random.choice(self.move_list)
                 is_reverse = np.random.choice([True, False])
+
+                # CONTROLLO ANTI-ANNULLAMENTO
+                # Se la mossa attuale è uguale alla precedente ma con reverse opposto
+                # (es: R seguito da R'), allora la scartiamo e riproviamo.
+                if last_move_info[0] == move and last_move_info[1] != is_reverse:
+                    continue  # Salta il giro, genera un'altra mossa
 
                 cube.rotate_face(move, reverse=is_reverse)
 
@@ -74,3 +82,6 @@ class DataSetGenerator:
         print(f"[+] Successo! Tempo impiegato: {(end_time - start_time) / 60:.2f} minuti.")
 
 
+if __name__ == "__main__":
+    gen = DataSetGenerator(total_samples=300000, max_moves=14)
+    gen.generate()

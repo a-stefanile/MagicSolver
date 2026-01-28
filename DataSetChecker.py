@@ -26,7 +26,7 @@ def check_data(filename='rubiks_dataset_2M.npz'):
     print("\n--- Dimensioni dei dati ---")
     print(f"Shape di X (Stati): {X.shape} (Dovrebbe essere [N, 324])")
     print(f"Shape di y (Distanze): {y.shape} (Dovrebbe essere [N])")
-    print(f"Shape di moves (Sequenze): {moves.shape} (Dovrebbe essere [N, 20])")
+    print(f"Shape di moves (Sequenze): {moves.shape} (Dovrebbe essere [N, 14])")
 
     # 4. Analisi di un campione casuale
     idx = np.random.randint(0, len(y))
