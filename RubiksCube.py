@@ -208,3 +208,31 @@ class RubiksCube:
             selected_move = moves[i]
             self.rotate_face(selected_move[0], reverse=not selected_move[1])
 
+    def get_manhattan_features(self):
+        faces_data = [
+            self.cube[0, 1:4, 1:4],  # Top
+            self.cube[-1, 1:4, 1:4],  # Bottom
+            self.cube[1:4, 0, 1:4],  # Front
+            self.cube[1:4, -1, 1:4],  # Back
+            self.cube[1:4, 1:4, 0],  # Left
+            self.cube[1:4, 1:4, -1]  # Right
+        ]
+        flat_stickers = np.array(faces_data).flatten()
+        color_to_target_face = {'w': 0, 'y': 1, 'g': 2, 'b': 3, 'r': 4, 'o': 5}
+        current_face_indices = np.repeat(np.arange(6), 9)
+
+        target_face_indices = np.array([color_to_target_face[c] for c in flat_stickers])
+        opposites = {0: 1, 1: 0, 2: 3, 3: 2, 4: 5, 5: 4}
+
+        distances = np.zeros(54, dtype=np.uint8)
+        diff_mask = target_face_indices != current_face_indices
+        distances[diff_mask] = 1
+        for f1, f2 in opposites.items():
+            opposite_mask = (current_face_indices == f1) & (target_face_indices == f2)
+            distances[opposite_mask] = 2
+        return distances
+
+    def is_solved(self):
+        """Verifica se il cubo è in stato risolto."""
+        # Se tutti i quadratini sono alla distanza 0 dalla loro faccia, è risolto
+        return np.all(self.get_manhattan_features() == 0)
