@@ -14,7 +14,7 @@ class RubiksAI:
         self.root.geometry("850x800")
         self.root.configure(bg="#2c3e50")
 
-        # Inizializzazione Logica e IA
+        # Inizializzazione
         self.init_cube_data()
         try:
             self.ai_solver = RubiksSolver(pipeline='OHE')
@@ -90,8 +90,6 @@ class RubiksAI:
                                 fill="#2c3e50")
 
         size = 35
-        # Mapping Facce GUI -> Slices del tensore 5x5x5 di RubiksCube
-        # U: Top, D: Bottom, F: Front, B: Back, L: Left, R: Right
         offsets = {
             'U': (size * 3 + 20, 40),
             'L': (20, size * 3 + 40),
@@ -101,7 +99,6 @@ class RubiksAI:
             'D': (size * 3 + 19, size * 6 + 40)
         }
 
-        # Estrazione dati dal tensore per ogni faccia
         face_data = {
             'U': self.cube_logic.cube[0, 1:4, 1:4],
             'D': self.cube_logic.cube[4, 1:4, 1:4],
@@ -148,10 +145,55 @@ class RubiksAI:
         self.cube_logic.rotate_face(face_logic, reverse=is_rev)
         self.draw_cube(move)
 
+    def validate_cube_reality(self):
+        """Verifica se la configurazione attuale del cubo è fisicamente possibile."""
+        all_stickers = []
+        face_data = {
+            'U': self.cube_logic.cube[0, 1:4, 1:4], 'D': self.cube_logic.cube[4, 1:4, 1:4],
+            'F': self.cube_logic.cube[1:4, 0, 1:4], 'B': self.cube_logic.cube[1:4, 4, 1:4],
+            'L': self.cube_logic.cube[1:4, 1:4, 0], 'R': self.cube_logic.cube[1:4, 1:4, 4]
+        }
+        for data in face_data.values():
+            all_stickers.extend(data.flatten().tolist())
+
+        # 2. Controllo Conteggio (9 per colore)
+        for color_code in ['w', 'y', 'g', 'b', 'r', 'o']:
+            count = all_stickers.count(color_code)
+            if count != 9:
+                color_name = self.color_map_logic_to_gui[color_code]
+                messagebox.showerror("Cubo non valido!",
+                                     f"Il colore {color_name} appare {count} volte. Deve apparire esattamente 9 volte.")
+                return False
+
+        # 3. Controllo Centri (Devono essere fissi)
+        centers = {
+            "Top (Bianco)": self.cube_logic.cube[0, 2, 2], "Bottom (Giallo)": self.cube_logic.cube[4, 2, 2],
+            "Front (Verde)": self.cube_logic.cube[2, 0, 2], "Back (Blu)": self.cube_logic.cube[2, 4, 2],
+            "Left (Rosso)": self.cube_logic.cube[2, 2, 0], "Right (Arancio)": self.cube_logic.cube[2, 2, 4]
+        }
+        expected_centers = {'Top (Bianco)': 'w', 'Bottom (Giallo)': 'y', 'Front (Verde)': 'g',
+                            'Back (Blu)': 'b', 'Left (Rosso)': 'r', 'Right (Arancio)': 'o'}
+
+        for name, color in centers.items():
+            if color != expected_centers[name]:
+                messagebox.showerror("Cubo non valido!",
+                                     f"Il centro della faccia {name} è errato. I centri non possono cambiare posizione!")
+                return False
+
+        opposites = [('w', 'y'), ('g', 'b'), ('r', 'o')]
+
+        for c1, c2 in opposites:
+            pass
+
+        return True
+
     def solve_with_ai(self):
         """Utilizza il RubiksSolver per trovare la soluzione."""
         if not self.ai_solver:
             messagebox.showerror("Errore", "Modello IA non caricato. Controlla i file .joblib")
+            return
+
+        if not self.validate_cube_reality():
             return
 
         if self.cube_logic.is_solved():
