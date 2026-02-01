@@ -15,8 +15,8 @@ def generate_single_sample(_):
     """
     cube = RubiksCube()
 
-    # Scegliamo un numero di mosse tra 1 e 14
-    num_moves = random.randint(1, 14)
+    # Scegliamo un numero di mosse tra 1 e 20
+    num_moves = random.randint(1, 20)
 
     # Eseguiamo lo scramble
     for _ in range(num_moves):
@@ -32,7 +32,7 @@ def generate_single_sample(_):
 
 
 def create_parallel_dataset():
-    num_samples = 1000000
+    num_samples = 2000000
     # Usiamo 16 core o quelli disponibili
     num_cores = mp.cpu_count()
 
