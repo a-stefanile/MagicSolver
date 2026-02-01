@@ -5,6 +5,8 @@
 ![Machine Learning](https://img.shields.io/badge/Model-Random_Forest-green)
 ![Status](https://img.shields.io/badge/Status-Academic_Project-orange)
 
+<div align="center"><img src="logoMS.png" alt="MagicSolver Logo" height = 400px width = 400px></div>
+
 **MagicSolver** is a Machine Learning-based Rubik's Cube solver developed as a project for "Fondamenti di Intelligenza Artificiale" course at University of Salerno (UNISA).
 
 Unlike traditional solvers that rely on complex, pre-computed lookup tables and mathematical group theory, MagicSolver learns to estimate the distance to the solution by observing millions of scrambled states. It effectively derives a heuristic function purely from data, guiding an adaptive search algorithm to solve the puzzle.
@@ -54,9 +56,6 @@ The models were evaluated on a held-out Test Set of 660,000 samples.
 ### 1. Prerequisites
 Clone the repository and set up a Python environment:
 
-```bash
-git clone [https://github.com/YOUR_USERNAME/MagicSolver.git](https://github.com/a-stefanile/MagicSolver.git)
-```
 ### 2. Generate Training Data
 Before training, you need to generate the dataset. You can generate it, running the DataSetGenerator.py file
 
