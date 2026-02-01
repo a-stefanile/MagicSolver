@@ -5,7 +5,7 @@ from RubiksCube import RubiksCube
 
 
 class DataSetGenerator:
-    def __init__(self, total_samples=300000, max_moves=14):
+    def __init__(self, total_samples=2000000, max_moves=20):
         self.total_samples = total_samples
         self.max_moves = max_moves
         self.num_workers = mp.cpu_count()
@@ -83,5 +83,5 @@ class DataSetGenerator:
 
 
 if __name__ == "__main__":
-    gen = DataSetGenerator(total_samples=300000, max_moves=14)
+    gen = DataSetGenerator(total_samples=2000000, max_moves=14)
     gen.generate()
