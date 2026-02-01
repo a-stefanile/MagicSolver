@@ -2,68 +2,73 @@ import numpy as np
 import time
 import csv
 import random
+import os
 from RubiksCube import RubiksCube
 from Solver import RubiksSolver
 
 
-def run_benchmark(num_cubes=100, filename="benchmark_1_20_completo.csv"):
-    # Carichiamo i risolutori una sola volta
-    solvers = {
-        'OHE': RubiksSolver(pipeline='OHE'),
-        'MANHATTAN': RubiksSolver(pipeline='MANHATTAN')
-    }
+def run_benchmark_ohe(num_cubes=50, filename="benchmark_ohe_20_mosse.csv"):
+    # Inizializziamo solo il risolutore OHE
+    # Assicurati che il file magic_solver_model.joblib sia nella cartella
+    solver = RubiksSolver(pipeline='OHE')
+
+    # Prepariamo il file CSV
+    file_exists = os.path.isfile(filename)
 
     with open(filename, mode='w', newline='') as file:
         writer = csv.writer(file)
-        # Header dettagliato per analisi statistiche avanzate
+        # Header ottimizzato per tesi
         writer.writerow([
-            'ID_Test', 'Pipeline', 'Mosse_Reali', 'Stima_IA_Iniziale',
-            'Risolto', 'Tempo_Secondi', 'Nodi_Esplorati', 'Lunghezza_Soluzione'
+            'Test_ID', 'Mosse_Scramble', 'Stima_IA_Iniziale',
+            'Risolto', 'Tempo_Secondi', 'Nodi_Esplorati',
+            'Lunghezza_Soluzione', 'Efficienza_Nodi_Sec'
         ])
 
-        print(f"[*] Avvio Benchmark Professionale (1-20 mosse casuali)")
-        print(f"[*] Risultati in: {filename}")
+        print(f"[*] Avvio Benchmark OHE (1-20 mosse)")
+        print(f"[*] Salvataggio dati in: {filename}")
         print("-" * 70)
 
         for i in range(1, num_cubes + 1):
-            # Generiamo una profondità casuale per questo test
-            current_depth = random.randint(1, 14)
+            # Scegliamo una profondità tra 1 e 20
+            # Se vuoi testare solo i casi difficili, usa random.randint(15, 20)
+            current_depth = random.randint(1, 20)
 
-            # Prepariamo il cubo e lo scramble
-            base_cube = RubiksCube()
-            scramble_sequence = base_cube.scramble(current_depth)
+            # Creazione del cubo e scramble
+            cube = RubiksCube()
+            scramble_sequence = cube.scramble(current_depth)
 
-            print(f"[{i}/{num_cubes}] Testando profondità {current_depth}...")
+            # Catturiamo la stima iniziale prima di risolvere
+            stima_iniziale = solver.get_heuristic(cube)
 
-            for p_name in ['OHE', 'MANHATTAN']:
-                # Reset cubo per la pipeline corrente
-                test_cube = RubiksCube()
-                for m, r in scramble_sequence:
-                    test_cube.rotate_face(m, reverse=r)
+            print(f"[{i}/{num_cubes}] Profondità: {current_depth} | Stima IA: {stima_iniziale}...", end=" ", flush=True)
 
-                # Catturiamo la prima stima dell'IA (Heuristic iniziale)
-                stima_iniziale = solvers[p_name].get_heuristic(test_cube)
+            # Esecuzione della risoluzione (usando solve_adaptive_ultra)
+            start_t = time.time()
+            solution, nodes = solver.solve_adaptive_ultra(cube)
+            end_t = time.time()
 
-                # Risoluzione
-                start_t = time.time()
-                solution, nodes = solvers[p_name].solve_adaptive(test_cube)
-                end_t = time.time()
+            tempo = end_t - start_t
+            risolto = 1 if solution is not None else 0
+            lunghezza = len(solution) if solution is not None else 0
 
-                tempo = end_t - start_t
-                risolto = 1 if solution is not None else 0
-                lunghezza = len(solution) if solution is not None else 0
+            # Calcolo efficienza (nodi al secondo)
+            nodi_sec = int(nodes / tempo) if tempo > 0 else 0
 
-                # Scrittura nel file
-                writer.writerow([
-                    i, p_name, current_depth, stima_iniziale,
-                    risolto, f"{tempo:.4f}", nodes, lunghezza
-                ])
+            # Salvataggio riga
+            writer.writerow([
+                i, current_depth, stima_iniziale,
+                risolto, f"{tempo:.4f}", nodes, lunghezza, nodi_sec
+            ])
+
+            status = "✅ RISOLTO" if risolto else "❌ FALLITO"
+            print(f"{status} in {tempo:.2f}s")
 
     print("\n" + "=" * 70)
-    print(f"[!] BENCHMARK COMPLETATO CON SUCCESSO!")
-    print(f"[!] Analizza {filename} su Excel per i grafici.")
+    print(f"[!] BENCHMARK OHE COMPLETATO!")
+    print(f"[!] File generato: {filename}")
     print("=" * 70)
 
 
 if __name__ == "__main__":
-    run_benchmark(num_cubes=100)
+    # Per un benchmark serio da tesi, 50 o 100 cubi sono l'ideale
+    run_benchmark_ohe(num_cubes=50)
