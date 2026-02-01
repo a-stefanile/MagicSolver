@@ -236,3 +236,7 @@ class RubiksCube:
         """Verifica se il cubo è in stato risolto."""
         # Se tutti i quadratini sono alla distanza 0 dalla loro faccia, è risolto
         return np.all(self.get_manhattan_features() == 0)
+
+if __name__ == "__main__":
+    cube=RubiksCube()
+    cube.visualize_opposite_corners()
