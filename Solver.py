@@ -76,37 +76,28 @@ class RubiksSolver:
         return self.get_heuristic_cached(cube)
 
     def solve_beam_ultra(self, start_cube, beam_width, max_depth,
-                         restart_prob=0.15, timeout_seconds=None):
-        """Beam Search OTTIMIZZATO con TIMEOUT ADATTIVO."""
-
-        # === INIZIO TIMER ===
+                         restart_prob=0.15, timeout_seconds=None, epsilon=1.0):
+        """Beam Search OTTIMIZZATO con EPSILON ADATTIVA."""
         start_time = time.time()
 
         if start_cube.is_solved():
             return [], 0
 
-        candidates = [(self.get_heuristic_cached(start_cube), start_cube, [])]
+        # Inizializziamo candidates con: (f_score, h_val, cubo, mosse)
+        h_start = self.get_heuristic_cached(start_cube)
+        candidates = [(h_start * epsilon, h_start, start_cube, [])]
+
         total_nodes = 0
-
         stagnation_counter = 0
-        prev_best_heuristic = float('inf')
-
-        # === PRUNING DINAMICO ===
-        stima_iniziale = self.get_heuristic_cached(start_cube)
-        MAX_HEURISTIC_THRESHOLD = 15 if stima_iniziale > 12 else 20
-
-        # === EARLY STOPPING ===
-        MAX_NODES = 200000
+        prev_best_h = float('inf')
+        MAX_HEURISTIC_THRESHOLD = 22
+        MAX_NODES = 2000000
 
         for depth in range(max_depth):
-            # === CHECK TIMEOUT ===
-            if timeout_seconds is not None:
-                elapsed = time.time() - start_time
-                if elapsed > timeout_seconds:
-                    print(f"TIMEOUT {timeout_seconds}s (depth={depth}, nodi={total_nodes})")
-                    return None, total_nodes
-
-            # === CHECK EARLY STOPPING ===
+            # Check Timeout e Nodi
+            if timeout_seconds and (time.time() - start_time) > timeout_seconds:
+                print(f"TIMEOUT {timeout_seconds}s (depth={depth}, nodi={total_nodes})")
+                return None, total_nodes
             if total_nodes > MAX_NODES:
                 print(f"Troppi nodi ({total_nodes}), stop anticipato")
                 return None, total_nodes
@@ -114,11 +105,11 @@ class RubiksSolver:
             all_child_cubes = []
             all_child_moves = []
 
-            # Espansione
-            for _, parent_cube, parent_moves in candidates:
+            # --- ESPANSIONE ---
+            # Notare che ora spacchettiamo 4 valori: _, _, parent_cube, parent_moves
+            for _, _, parent_cube, parent_moves in candidates:
                 for move_name in self.moves:
                     for is_rev in [False, True]:
-                        # No backtracking
                         if parent_moves and parent_moves[-1] == (move_name, not is_rev):
                             continue
 
@@ -127,12 +118,9 @@ class RubiksSolver:
                         new_moves = parent_moves + [(move_name, is_rev)]
                         total_nodes += 1
 
-                        # CHECK VITTORIA
                         if child.is_solved():
                             elapsed = time.time() - start_time
-                            hit_rate = 100 * self.cache_hits / (self.cache_hits + self.cache_misses) if (
-                                                                                                                    self.cache_hits + self.cache_misses) > 0 else 0
-                            print(f"Risolto in {elapsed:.2f}s | Cache: {hit_rate:.1f}%")
+                            print(f"Risolto in {elapsed:.2f}s | Mosse: {len(new_moves)}")
                             return new_moves, total_nodes
 
                         all_child_cubes.append(child)
@@ -141,41 +129,40 @@ class RubiksSolver:
             if not all_child_cubes:
                 return None, total_nodes
 
-            # Batch prediction
-            if self.pipeline == 'OHE':
-                X_batch = np.array([c.get_state() for c in all_child_cubes])
-            else:
-                X_batch = np.array([c.get_manhattan_features() for c in all_child_cubes])
-
+            # --- PREDIZIONE BATCH ---
+            X_batch = np.array([c.get_state() for c in all_child_cubes])
             heuristics = self.model.predict(X_batch)
 
-            #SELEZIONE + PRUNING
+            # --- SELEZIONE PESATA (EPSILON) ---
             combined = []
             for i in range(len(all_child_cubes)):
                 h = heuristics[i]
-
-                #PRUNING
                 if h > MAX_HEURISTIC_THRESHOLD:
                     continue
 
-                combined.append((h, all_child_cubes[i], all_child_moves[i]))
+                # Calcolo f = g + epsilon * h
+                f_score = (depth + 1) + (h * epsilon)
+                # Salviamo h separatamente per monitorare la stagnazione reale
+                combined.append((f_score, h, all_child_cubes[i], all_child_moves[i]))
 
             if not combined:
                 return None, total_nodes
 
+            # Ordiniamo per f_score (primo elemento)
             combined.sort(key=lambda x: x[0])
 
-            #DETECT STAGNATION
-            current_best = combined[0][0]
-            if current_best >= prev_best_heuristic:
+            # --- MONITORAGGIO STAGNAZIONE (su h reale) ---
+            current_best_h = combined[0][1]  # Prendiamo h reale dal secondo elemento
+            if current_best_h >= prev_best_h:
                 stagnation_counter += 1
             else:
                 stagnation_counter = 0
-            prev_best_heuristic = current_best
+            prev_best_h = current_best_h
 
-            #RIAVVIO CASUALE
+            # --- RESTART E LOG ---
             if np.random.random() < restart_prob or stagnation_counter >= 3:
-                print(f"RESTART d={depth + 1} (best={current_best:.1f})")
+                # Stampiamo h_best così capiamo se ci stiamo avvicinando alla soluzione
+                print(f"RESTART d={depth + 1} (h_best={current_best_h:.1f})")
 
                 elite_size = min(10, beam_width // 4)
                 elite = combined[:elite_size]
@@ -184,12 +171,10 @@ class RubiksSolver:
                 rest_candidates = combined[elite_size:min(len(combined), elite_size + rest_size * 3)]
 
                 if len(rest_candidates) >= rest_size:
+                    # Usiamo f_score (x[0]) per i pesi probabilistici
                     weights = np.exp(-np.array([x[0] for x in rest_candidates]) / 10.0)
                     weights /= weights.sum()
-                    selected = np.random.choice(
-                        len(rest_candidates), rest_size,
-                        replace=False, p=weights
-                    )
+                    selected = np.random.choice(len(rest_candidates), rest_size, replace=False, p=weights)
                     rest = [rest_candidates[int(i)] for i in selected]
                 else:
                     rest = rest_candidates
@@ -201,81 +186,49 @@ class RubiksSolver:
 
         return None, total_nodes
 
+    def solve_adaptive(self, cube):
+        """Alias per benchmark vecchio."""
+        return self.solve_adaptive_ultra(cube)
+
     def solve_adaptive_ultra(self, cube):
         """
-        Strategia adattiva con TIMEOUT AUMENTATI per aumentare la chance di successo.
-
-        TIMEOUTS OTTIMIZZATI:
-        - Livello 1: 20s (cubi facili)
-        - Livello 2: 60s (cubi medi)
-        - Multi-Restart: 90s per tentativo (cubi difficili)
-
-        TEMPO MASSIMO TOTALE: 20 + 60 + (90×3) = 350s (~6 minuti)
+        Strategia adattiva con parametri potenziati per superare le 20 mosse.
         """
-
         stima_iniziale = self.get_heuristic(cube)
         print(f"\n{'=' * 60}")
         print(f"[*] Cubo con stima iniziale: {stima_iniziale} mosse")
         print(f"{'=' * 60}")
 
-        #LIVELLO 1
-        print("[*] LIVELLO 1...")
-        cube_copy_1 = copy.deepcopy(cube)
-        path, nodes_1 = self.solve_beam_ultra(
-            cube_copy_1, 200, 25,
-            restart_prob=0.10,
-            timeout_seconds=20
-        )
-
-        if path is not None:
-            print("Risolto!")
+        # LIVELLO 1: Rapido (Cubi 1-12 mosse)
+        print("[*] LIVELLO 1 (Veloce)...")
+        path, nodes_1 = self.solve_beam_ultra(copy.deepcopy(cube), 200, 25, 0.10, 20,epsilon=1.0)
+        if path:
+            print("Risolto al Livello 1!")
             return path, nodes_1
 
-        #LIVELLO 2
-        print("[*] LIVELLO 2...")
-        cube_copy_2 = copy.deepcopy(cube)
-        path, nodes_2 = self.solve_beam_ultra(
-            cube_copy_2, 800, 35,
-            restart_prob=0.20,
-            timeout_seconds=60
-        )
-
-        if path is not None:
-            print("Risolto Livello!")
+        # LIVELLO 2: Medio (Cubi 13-17 mosse)
+        print("[*] LIVELLO 2 (Medio-epsilon 1.3)...")
+        path, nodes_2 = self.solve_beam_ultra(copy.deepcopy(cube), 1500, 40, 0.20, 120,epsilon=1.3)
+        if path:
+            print("Risolto al Livello 2!")
             return path, nodes_1 + nodes_2
 
-        #MULTI-RESTART
-        print("[*] MULTI-RESTART: 3 tentativi...")
-        best_path = None
-        best_length = float('inf')
+        # LIVELLO 3: Intensivo (Cubi 18-20+ mosse)
+        print("[*] LIVELLO 3 (Intensivo - 3 tentativi)...")
         total_restart_nodes = 0
+        best_path = None
 
         for attempt in range(3):
             print(f"\n    --- Tentativo {attempt + 1}/3 ---")
-            cube_copy = copy.deepcopy(cube)
-            path, nodes = self.solve_beam_ultra(
-                cube_copy, 1200, 40,
-                restart_prob=0.35,
-                timeout_seconds=90  # ← AUMENTATO da 60s a 90s
-            )
-
+            # Qui il beam_width è 3000 e MAX_NODES (nel metodo sopra) è 2 milioni
+            path, nodes = self.solve_beam_ultra(copy.deepcopy(cube), 1500, 60, 0.40, 180,epsilon=1.6)
             total_restart_nodes += nodes
 
-            if path is not None:
-                if len(path) < best_length:
-                    best_path = path
-                    best_length = len(path)
-                    print(f"Soluzione trovata")
+            if path:
+                print(f"Risolto al tentativo {attempt + 1}!")
+                return path, nodes_1 + nodes_2 + total_restart_nodes
             else:
-                print(f"Tentativo {attempt + 1} timeout/fallito")
+                print(f"Tentativo {attempt + 1} fallito o timeout.")
 
-        if best_path is not None:
-            print(f"Risolto ")
-            return best_path, nodes_1 + nodes_2 + total_restart_nodes
-
-        print("\nTutti i livelli falliti")
+        print("\n[!] Tutti i livelli falliti. Il cubo è troppo complesso per i parametri attuali.")
         return None, nodes_1 + nodes_2 + total_restart_nodes
-
-    def solve_adaptive(self, cube):
-        """Alias per benchmark vecchio."""
-        return self.solve_adaptive_ultra(cube)
