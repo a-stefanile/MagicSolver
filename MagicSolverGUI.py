@@ -9,12 +9,13 @@ from Solver import RubiksSolver
 
 class RubiksAI:
     def __init__(self, root):
+        # Inizializzazione interfaccia grafica
         self.root = root
         self.root.title("MagicSolver")
         self.root.geometry("850x800")
         self.root.configure(bg="#2c3e50")
 
-        # Inizializzazione
+        # Inizializzazione del cubo logico e caricamento del modello (OHE)
         self.init_cube_data()
         try:
             self.ai_solver = RubiksSolver(pipeline='OHE')
@@ -40,6 +41,7 @@ class RubiksAI:
         self.cube_logic = RubiksCube()
 
     def setup_ui(self):
+        """Configurazioni blocchi, canvas e bottoni dell interfaccia grafica."""
         # --- TOP: PALETTE ---
         top_frame = tk.LabelFrame(self.root, text=" 1. Seleziona Colore ", bg="#34495e", fg="white", padx=10, pady=5)
         top_frame.pack(pady=10)
@@ -61,33 +63,29 @@ class RubiksAI:
         self.gui_moves = ['U', 'D', 'L', 'R', 'F', 'B']
         for m in self.gui_moves:
             tk.Button(row1, text=m, width=5, command=lambda x=m: self.apply_move_gui(x)).pack(side=tk.LEFT, padx=2)
-            tk.Button(row1, text=f"{m}'", width=5, bg="#bdc3c7", command=lambda x=f"{m}'": self.apply_move_gui(x)).pack(
-                side=tk.LEFT, padx=2)
+            tk.Button(row1, text=f"{m}'", width=5, bg="#bdc3c7", command=lambda x=f"{m}'": self.apply_move_gui(x)).pack(side=tk.LEFT, padx=2)
 
         # --- BOTTOM: CONTROLLI IA ---
         bot_frame = tk.Frame(self.root, bg="#2c3e50")
         bot_frame.pack(pady=15)
 
         btn_style = {"font": ("Arial", 10, "bold"), "padx": 15, "pady": 8}
-        tk.Button(bot_frame, text="MESCOLA", bg="#f1c40f", **btn_style, command=self.scramble_cube).pack(side=tk.LEFT,
-                                                                                                         padx=5)
-        tk.Button(bot_frame, text="VERIFICA", bg="#3498db", fg="white", **btn_style,
-                  command=self.solve_with_ai).pack(side=tk.LEFT, padx=5)
-        self.play_btn = tk.Button(bot_frame, text="ESEGUI SOLUZIONE", bg="#2ecc71", fg="white", state=tk.DISABLED,
-                                  **btn_style, command=self.start_solving_process)
+        tk.Button(bot_frame, text="MESCOLA", bg="#f1c40f", **btn_style, command=self.scramble_cube).pack(side=tk.LEFT,padx=5)
+        tk.Button(bot_frame, text="VERIFICA", bg="#3498db", fg="white", **btn_style, command=self.solve_with_ai).pack(side=tk.LEFT, padx=5)
+        self.play_btn = tk.Button(bot_frame, text="ESEGUI SOLUZIONE", bg="#2ecc71", fg="white", state=tk.DISABLED, **btn_style, command=self.start_solving_process)
         self.play_btn.pack(side=tk.LEFT, padx=5)
-        tk.Button(bot_frame, text="RESET", bg="#e74c3c", fg="white", **btn_style, command=self.reset_ui).pack(
-            side=tk.LEFT, padx=5)
+        tk.Button(bot_frame, text="RESET", bg="#e74c3c", fg="white", **btn_style, command=self.reset_ui).pack(side=tk.LEFT, padx=5)
 
         self.draw_cube()
 
     def set_color(self, color):
+        """Seleziona il colore con cui cambiare il cubo."""
         self.selected_color = color
 
     def draw_cube(self, current_move="Stato Attuale"):
+        """Creazione rappresentazione grafica del cubo."""
         self.canvas.delete("all")
-        self.canvas.create_text(325, 450, text=f"ULTIMA AZIONE: {current_move}", font=("Arial", 12, "bold"),
-                                fill="#2c3e50")
+        self.canvas.create_text(325, 450, text=f"ULTIMA AZIONE: {current_move}", font=("Arial", 12, "bold"),fill="#2c3e50")
 
         size = 35
         offsets = {
@@ -156,7 +154,7 @@ class RubiksAI:
         for data in face_data.values():
             all_stickers.extend(data.flatten().tolist())
 
-        # 2. Controllo Conteggio (9 per colore)
+        # 1. Controllo Conteggio (9 per colore)
         for color_code in ['w', 'y', 'g', 'b', 'r', 'o']:
             count = all_stickers.count(color_code)
             if count != 9:
@@ -165,7 +163,7 @@ class RubiksAI:
                                      f"Il colore {color_name} appare {count} volte. Deve apparire esattamente 9 volte.")
                 return False
 
-        # 3. Controllo Centri (Devono essere fissi)
+        # 2. Controllo Centri (Devono essere fissi)
         centers = {
             "Top (Bianco)": self.cube_logic.cube[0, 2, 2], "Bottom (Giallo)": self.cube_logic.cube[4, 2, 2],
             "Front (Verde)": self.cube_logic.cube[2, 0, 2], "Back (Blu)": self.cube_logic.cube[2, 4, 2],
@@ -180,8 +178,8 @@ class RubiksAI:
                                      f"Il centro della faccia {name} è errato. I centri non possono cambiare posizione!")
                 return False
 
+        # 3. Controllo spigoli per coppie impossibili
         opposites = [('w', 'y'), ('g', 'b'), ('r', 'o')]
-
         for c1, c2 in opposites:
             pass
 
@@ -200,44 +198,48 @@ class RubiksAI:
             messagebox.showinfo("Info", "Il cubo è già risolto!")
             return
 
-        # L'IA risolve il cubo attuale
+        # L'IA prova a risolvere il cubo attuale
         solution, nodes = self.ai_solver.solve_adaptive(self.cube_logic)
 
         if solution:
             self.solution_moves = solution  # Formato: [('top', False), ...]
+            # Soluzione trovata quindi il tasto Esegui diventa cliccabile
             self.play_btn.config(state=tk.NORMAL)
-            messagebox.showinfo("Successo",
-                                f"IA ha trovato una soluzione in {len(solution)} mosse!\nNodi esplorati: {nodes}")
+            messagebox.showinfo("Successo",f"IA ha trovato una soluzione in {len(solution)} mosse!\nNodi esplorati: {nodes}")
         else:
             messagebox.showerror("IA Fallita", "L'IA non è riuscita a risolvere questa configurazione.")
 
     def start_solving_process(self):
+        """Crea la cartella dove verranno inseriti i screenshot della soluzione del cubo."""
         # Crea cartella snapshot
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.current_session_dir = os.path.join(self.base_output_dir, f"ai_session_{timestamp}")
+        self.current_session_dir = os.path.join(self.base_output_dir, f"cubo_session_{timestamp}")
         if not os.path.exists(self.current_session_dir): os.makedirs(self.current_session_dir)
 
         self.snapshot_count = 0
         self.play_solution(0)
 
     def play_solution(self, index):
+        """Riproduce gli steps trovati dall IA sull'interfaccia grafica."""
         if index < len(self.solution_moves):
             move_tuple = self.solution_moves[index]  # ('face', reverse)
             self.cube_logic.rotate_face(move_tuple[0], reverse=move_tuple[1])
 
             # Label per la mossa
-            move_label = f"{move_tuple[0]} {' (REV)' if move_tuple[1] else ''}"
+            move_label = f"{move_tuple[0]} {'(REV)' if move_tuple[1] else ''}"
             self.draw_cube(move_label)
 
             # Screenshot
-            self.take_snapshot(f"step_{index}")
-
+            self.take_snapshot(f"step{index}_{move_tuple[0]}{' (REV)' if move_tuple[1] else ''}")
+            # Attesa (800ms)
             self.root.after(800, lambda: self.play_solution(index + 1))
         else:
-            self.draw_cube("RISOLTO DALL'IA")
+            self.draw_cube("RISOLTO!")
+            # Il bottone Esegui viene ri-disabilitato
             self.play_btn.config(state=tk.DISABLED)
 
     def take_snapshot(self, filename):
+        """Fotografa lo stato attuale del cubo e salva il png nella cartella precedentemente creata."""
         self.root.update()
         x = self.root.winfo_rootx() + self.canvas.winfo_x()
         y = self.root.winfo_rooty() + self.canvas.winfo_y()
@@ -246,11 +248,13 @@ class RubiksAI:
         ImageGrab.grab(bbox=(x, y, x1, y1)).save(os.path.join(self.current_session_dir, f"{filename}.png"))
 
     def scramble_cube(self):
-        moves = self.cube_logic.scramble(n=10) # Numero di scramble
+        """Mischia il cubo per un numero definito di mosse."""
+        moves = self.cube_logic.scramble(n=12) # Numero di scramble
         self.draw_cube("MESCOLATO")
         self.play_btn.config(state=tk.DISABLED)
 
     def reset_ui(self):
+        """Riporta il cubo allo stato iniziale."""
         self.init_cube_data()
         self.play_btn.config(state=tk.DISABLED)
         self.draw_cube("RESET")
