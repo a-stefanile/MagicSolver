@@ -5,7 +5,6 @@ import os
 import time
 import random
 
-# --- OTTIMIZZAZIONE SISTEMA ---
 os.environ['OMP_NUM_THREADS'] = '1'
 os.environ['MKL_NUM_THREADS'] = '1'
 
@@ -31,13 +30,11 @@ class RubiksSolver:
             print(f"[-] ERRORE: {e}")
             exit()
 
-        ### MODIFICA 1: SILENZIARE I LOG DI JOB LIB ###
-        # Disabilita i log di parallelismo che sporcano la console
+        # Disabilita i log di parallelismo
         if hasattr(self.model, 'verbose'):
             self.model.verbose = 0
         if hasattr(self.model, 'n_jobs'):
             self.model.n_jobs = 1
-        # Se è un Random Forest, silenziamo anche gli alberi interni
         if hasattr(self.model, 'estimators_'):
             for est in self.model.estimators_:
                 if hasattr(est, 'verbose'):
@@ -98,7 +95,6 @@ class RubiksSolver:
                         total_nodes += 1
 
                         if child.is_solved():
-                            # Modificato per log più pulito
                             print(f"   >> Risolto d={depth + 1} | Nodi={total_nodes}")
                             return new_moves, total_nodes
 
@@ -106,7 +102,6 @@ class RubiksSolver:
 
             if not all_child_data: return None, total_nodes
 
-            ### MODIFICA 2: ADATTAMENTO BATCH PER OHE/MANHATTAN ###
             if self.pipeline == 'OHE':
                 X_batch = np.array([c[0].get_state() for c in all_child_data])
             else:
@@ -139,9 +134,6 @@ class RubiksSolver:
         return None, total_nodes
 
     def solve_adaptive_ultra(self, cube):
-        """Versione OTTIMIZZATA per la consegna - Massimizza il successo su cubi complessi."""
-        # NOTA: Non resettiamo la cache qui per permettere ai livelli 2 e 3
-        # di riutilizzare i calcoli fatti dal livello 1.
         self.prediction_cache = {}
         n1 = n2 = n3 = 0
 
@@ -156,7 +148,7 @@ class RubiksSolver:
                     return [(move_name, is_rev)], 1
 
         # --- 2. LIVELLO 1: Rapido (Cerca la via più breve) ---
-        # Timeout aggressivo: se è facile lo trova subito.
+        # Timeout aggressivo
         path, n1 = self.solve_beam_ultra(copy.deepcopy(cube), 250, 25, 0.1, timeout_seconds=10, epsilon=1.0)
         if path: return path, n1
 
@@ -165,8 +157,7 @@ class RubiksSolver:
         path, n2 = self.solve_beam_ultra(copy.deepcopy(cube), 1200, 55, 0.3, timeout_seconds=45, epsilon=1.2)
         if path: return path, n1 + n2
 
-        # --- 4. LIVELLO 3: Esplorazione Estrema (Anti-Stallo) ---
-
+        # --- 4. LIVELLO 3: Esplorazione profonda ---
         for attempt in range(2):
             path, n = self.solve_beam_ultra(copy.deepcopy(cube), 800, 80, 0.7, timeout_seconds=120, epsilon=1.5)
             n3 += n

@@ -37,7 +37,7 @@ class RubiksAI:
         self.setup_ui()
 
     def init_cube_data(self):
-        """Inizializza l'oggetto logico RubiksCube del progetto."""
+        """Inizializza l'oggetto logico RubiksCube."""
         self.cube_logic = RubiksCube()
 
     def setup_ui(self):
@@ -192,7 +192,7 @@ class RubiksAI:
         return True
 
     def solve_with_ai(self):
-        """Utilizza il RubiksSolver per trovare la soluzione."""
+        """Utilizza il Solver per trovare la soluzione."""
         if not self.ai_solver:
             messagebox.showerror("Errore", "Modello IA non caricato. Controlla i file .joblib")
             return
@@ -247,12 +247,12 @@ class RubiksAI:
             self.play_btn.config(state=tk.DISABLED)
 
     def take_snapshot(self, filename, move_text, step_num):
-        """Fotografa lo stato attuale del cubo e salva il png nella cartella precedentemente creata."""
+        """ "Fotografa" lo stato attuale del cubo e salva il png nella cartella precedentemente creata."""
         # Rendering in memoria per evitare immagini nere se la finestra è minimizzata
         img = Image.new('RGB', (650, 520), "#ecf0f1")
         draw = ImageDraw.Draw(img)
 
-        # Setup Font (Tenta di caricare Arial, altrimenti usa il default)
+        # Setup Font
         try:
             font_main = ImageFont.truetype("arial.ttf", 22)
             font_small = ImageFont.truetype("arial.ttf", 14)

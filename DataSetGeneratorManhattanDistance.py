@@ -4,9 +4,7 @@ import multiprocessing as mp
 from tqdm import tqdm
 import random
 
-# Definiamo le mosse fuori dalla funzione per non ricrearle 2 milioni di volte
 FACES = ['top', 'bottom', 'front', 'back', 'left', 'right']
-
 
 def generate_single_sample(_):
     """
@@ -25,7 +23,6 @@ def generate_single_sample(_):
         cube.rotate_face(move, reverse=rev)
 
     # Estraiamo le feature (vettore di 54 distanze)
-    # Questa chiamata ora usa la tua nuova funzione "slice and flatten"
     features = cube.get_manhattan_features()
 
     return features, num_moves
@@ -33,15 +30,11 @@ def generate_single_sample(_):
 
 def create_parallel_dataset():
     num_samples = 2000000
-    # Usiamo 16 core o quelli disponibili
     num_cores = mp.cpu_count()
 
     print(f"[*] Inizio generazione di {num_samples} campioni su {num_cores} core...")
 
-    # 'with' assicura che i processi vengano chiusi correttamente
     with mp.Pool(processes=num_cores) as pool:
-        # imap con chunksize è il modo più veloce per processare grandi liste
-        # tqdm mostra la barra di avanzamento in tempo reale
         raw_results = list(tqdm(
             pool.imap(generate_single_sample, range(num_samples), chunksize=500),
             total=num_samples,

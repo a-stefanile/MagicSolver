@@ -29,13 +29,6 @@ class RubiksCube:
         print(self.cube)
 
     def rotate_face(self, face, reverse=False):
-        """
-        Rotates a given face of the cube 90 degrees.
-
-        Parameters:
-            face (str): One of ['top', 'front', 'left', 'bottom', 'back', 'right']
-            reverse (bool): if the rotation should be reversed
-        """
         # maps a face to the section of the tensor which needs to be rotated
         rot_map = {
             'top': (slice(0, 2), slice(0, 5), slice(0, 5)),
@@ -63,19 +56,12 @@ class RubiksCube:
         self.cube[rot_map[face]] = rotated_slice
 
     def _rotate_cube_180(self):
-        """
-        Rotate the entire cube 180 degrees by flipping and transposing
-        this is used for visualization
-        """
         # Rotate the cube 180 degrees
         rotated_cube = np.rot90(self.cube, k=2, axes=(0,1))
         rotated_cube = np.rot90(rotated_cube, k=1, axes=(1,2))
         return rotated_cube
 
     def visualize_opposite_corners(self, return_fig = False):
-        """
-        Visualize the Rubik's Cube from two truly opposite corners
-        """
         # Create a new figure with two subplots
         fig = plt.figure(figsize=(20, 10))
 
@@ -180,7 +166,7 @@ class RubiksCube:
         colors = ['w', 'y', 'g', 'b', 'r', 'o']
 
         # 3. Creazione della matrice One-Hot
-        # Per ogni sticker, creiamo un array di 6 booleani/interi
+        # Per ogni sticker, un array di 6 booleani/interi
         ohe_matrix = np.zeros((len(flat_stickers), len(colors)), dtype=int)
 
         for i, sticker in enumerate(flat_stickers):

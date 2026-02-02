@@ -19,7 +19,7 @@ class DataSetGenerator:
         Funzione interna per la generazione di un singolo blocco di dati.
         """
         # X: 324 colonne per One-Hot Encoding degli sticker
-        # y: Distanza (numero di mosse)
+        # Y: Distanza (numero di mosse)
         # S: Sequenza delle mosse (ID da 0 a 11, -1 per padding)
         X = np.zeros((num_samples_chunk, 324), dtype=np.int8)
         y = np.zeros(num_samples_chunk, dtype=np.int8)
@@ -37,11 +37,10 @@ class DataSetGenerator:
                 move = np.random.choice(self.move_list)
                 is_reverse = np.random.choice([True, False])
 
-                # CONTROLLO ANTI-ANNULLAMENTO
                 # Se la mossa attuale è uguale alla precedente ma con reverse opposto
                 # (es: R seguito da R'), allora la scartiamo e riproviamo.
                 if last_move_info[0] == move and last_move_info[1] != is_reverse:
-                    continue  # Salta il giro, genera un'altra mossa
+                    continue
 
                 cube.rotate_face(move, reverse=is_reverse)
 

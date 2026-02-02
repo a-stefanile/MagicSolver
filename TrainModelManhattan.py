@@ -8,7 +8,7 @@ from sklearn.metrics import mean_absolute_error, r2_score
 
 
 def train_manhattan_pipeline():
-    # 1. Caricamento del Dataset Manhattan
+    # Caricamento del Dataset Manhattan
     dataset_path = 'rubiks_dataset_manhattan_2M.npz'
 
     if not os.path.exists(dataset_path):
@@ -23,14 +23,13 @@ def train_manhattan_pipeline():
     print(f"[+] Dataset caricato: {X.shape[0]} campioni.")
     print(f"[*] Dimensioni input: {X.shape[1]} (Manhattan Distances)")
 
-    # 2. Split del dataset (67% Training, 33% Test)
+    # Split del dataset (67% Training, 33% Test)
     # random_state=42 assicura che il test set sia confrontabile
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.33, random_state=42
     )
 
-    # 3. Configurazione del Random Forest
-    # n_jobs=-1 usa tutti i tuoi 16 core
+    # Configurazione del Random Forest
     model = RandomForestRegressor(
         n_estimators=100,
         max_depth=20,
@@ -38,7 +37,7 @@ def train_manhattan_pipeline():
         verbose=1
     )
 
-    # 4. Addestramento
+    # Addestramento
     print(f"[*] Inizio addestramento Pipeline 2. Il PC userà molta CPU...")
     start_time = time.time()
 
@@ -47,7 +46,7 @@ def train_manhattan_pipeline():
     duration = (time.time() - start_time) / 60
     print(f"[+] Addestramento completato in {duration:.2f} minuti.")
 
-    # 5. Valutazione (L'esame finale)
+    # Valutazione performance
     print("[*] Valutazione delle performance sul Test Set...")
     predictions = model.predict(X_test)
 
@@ -61,7 +60,7 @@ def train_manhattan_pipeline():
     print(f"Precisione (R2 Score):       {r2 * 100:.2f}%")
     print("=" * 40 + "\n")
 
-    # 6. Salvataggio del modello
+    # Salvataggio del modello
     model_filename = 'magic_solver_manhattan.joblib'
     print(f"[*] Salvataggio modello in {model_filename}...")
     joblib.dump(model, model_filename)

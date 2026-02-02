@@ -26,7 +26,6 @@ def run_medium_benchmark(num_tests=10, filename='results_ml_medium.csv'):
                 cube.scramble(m)
 
                 start_t = time.time()
-                # Il solver gestirà internamente i passaggi tra i 3 livelli di intensità
                 solution, nodes = solver.solve_adaptive_ultra(cube)
                 end_t = time.time()
 

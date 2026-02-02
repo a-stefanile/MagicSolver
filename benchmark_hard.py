@@ -14,7 +14,6 @@ def run_hard_benchmark(num_cubes=20, filename="benchmark_ohe_HARD.csv"):
 
     with open(filename, mode='w', newline='') as file:
         writer = csv.writer(file)
-        # Header con la nuova colonna 'Esito'
         writer.writerow([
             'Test_ID', 'Mosse_Scramble', 'Stima_IA_Iniziale',
             'Esito', 'Risolto_Bool', 'Tempo_Secondi',
@@ -61,7 +60,6 @@ def run_hard_benchmark(num_cubes=20, filename="benchmark_ohe_HARD.csv"):
             print(f"    --> {status_icon} {esito_str} | Tempo: {tempo:.2f}s | Mosse: {lunghezza} (Delta: {delta})")
             print("-" * 30)
 
-    # Riepilogo finale a video
     percentuale = (successi / num_cubes) * 100
     print("\n" + "=" * 70)
     print(f" BENCHMARK COMPLETATO ")

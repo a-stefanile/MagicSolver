@@ -6,7 +6,7 @@ from Solver import RubiksSolver
 
 
 def run_easy_benchmark(num_tests=20, filename='results_ml_easy.csv'):
-    # Inizializziamo il solver (carica il modello OHE internamente)
+    # Inizializziamo il solver
     solver = RubiksSolver(pipeline='OHE')
 
     print(f"\n[*] AVVIO BENCHMARK EASY (1-10 mosse)")
@@ -26,18 +26,14 @@ def run_easy_benchmark(num_tests=20, filename='results_ml_easy.csv'):
 
             for i in range(num_tests):
                 cube = RubiksCube()
-                # 1. Mescoliamo il cubo
                 cube.scramble(m)
 
-                # 2. Timer e risoluzione
                 start_t = time.time()
-                # Usiamo solve_adaptive_ultra che è il tuo metodo principale
                 solution, nodes = solver.solve_adaptive_ultra(cube)
                 end_t = time.time()
 
                 tempo = end_t - start_t
 
-                # 3. Gestione del risultato (evitiamo errori se solution è None)
                 if solution is not None:
                     solved = 1
                     successi_livello += 1
@@ -46,10 +42,9 @@ def run_easy_benchmark(num_tests=20, filename='results_ml_easy.csv'):
                     solved = 0
                     sol_length = 0
 
-                # 4. Salvataggio nel CSV
+                # Salvataggio nel CSV
                 writer.writerow([m, solved, f"{tempo:.4f}", nodes, sol_length])
 
-                # Feedback rapido a console
                 status = "✅" if solved else "❌"
                 print(f"   [Mossa {m}] Test {i + 1}/{num_tests}: {status} in {tempo:.2f}s")
 

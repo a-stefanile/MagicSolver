@@ -4,14 +4,14 @@ import numpy as np
 def check_data(filename='rubiks_dataset_2M.npz'):
     print(f"--- Analisi del file: {filename} ---")
 
-    # 1. Caricamento del file
+    # Caricamento del file
     try:
         data = np.load(filename)
     except FileNotFoundError:
         print(f"Errore: Il file {filename} non esiste.")
         return
 
-    # 2. Controllo delle chiavi
+    # Controllo delle chiavi
     keys = list(data.keys())
     print(f"Chiavi trovate: {keys}")
     if not all(k in keys for k in ['X', 'y', 'moves']):
@@ -22,13 +22,13 @@ def check_data(filename='rubiks_dataset_2M.npz'):
     y = data['y']
     moves = data['moves']
 
-    # 3. Controllo delle dimensioni (Shapes)
+    # Controllo delle dimensioni (Shapes)
     print("\n--- Dimensioni dei dati ---")
     print(f"Shape di X (Stati): {X.shape} (Dovrebbe essere [N, 324])")
     print(f"Shape di y (Distanze): {y.shape} (Dovrebbe essere [N])")
     print(f"Shape di moves (Sequenze): {moves.shape} (Dovrebbe essere [N, 14])")
 
-    # 4. Analisi di un campione casuale
+    # Analisi di un campione casuale
     idx = np.random.randint(0, len(y))
     print(f"\n--- Analisi del campione casuale #{idx} ---")
 
@@ -37,12 +37,11 @@ def check_data(filename='rubiks_dataset_2M.npz'):
     print(f"Valori unici in X[{idx}]: {unique_vals_x} (Dovrebbero essere [0 1])")
     print(f"Numero di '1' in X[{idx}]: {np.sum(X[idx])} (Dovrebbero essere 54, uno per ogni sticker)")
 
-    # Verifica y (Distanza)
+    # Verifica Y (Distanza)
     print(f"Distanza dichiarata (y): {y[idx]}")
 
     # Verifica moves (Sequenza)
     m_seq = moves[idx]
-    # Contiamo quante mosse non sono padding (-1)
     actual_moves_count = np.sum(m_seq != -1)
     print(f"Mosse reali nella sequenza: {actual_moves_count}")
 
