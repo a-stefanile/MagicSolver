@@ -2,7 +2,8 @@ import joblib
 import numpy as np
 import copy
 import os
-import time  # ← AGGIUNTO per timeout
+import time
+import random
 
 # --- OTTIMIZZAZIONE SISTEMA ---
 os.environ['OMP_NUM_THREADS'] = '1'
@@ -13,15 +14,12 @@ class RubiksSolver:
     def __init__(self, pipeline='OHE'):
         self.pipeline = pipeline
         self.moves = ['top', 'bottom', 'front', 'back', 'left', 'right']
-
-        # === CACHE PREDIZIONI ML ===
         self.prediction_cache = {}
         self.cache_hits = 0
         self.cache_misses = 0
 
         print(f"[*] Inizializzazione Solver. Pipeline selezionata: {pipeline}")
 
-        # Caricamento modello
         try:
             if pipeline == 'OHE':
                 print("[*] Caricamento modello OHE...")
@@ -33,80 +31,61 @@ class RubiksSolver:
             print(f"[-] ERRORE: {e}")
             exit()
 
-        # Configurazione
-        if hasattr(self.model, 'n_jobs'):
-            self.model.n_jobs = 1
+        ### MODIFICA 1: SILENZIARE I LOG DI JOB LIB ###
+        # Disabilita i log di parallelismo che sporcano la console
         if hasattr(self.model, 'verbose'):
             self.model.verbose = 0
+        if hasattr(self.model, 'n_jobs'):
+            self.model.n_jobs = 1
+        # Se è un Random Forest, silenziamo anche gli alberi interni
         if hasattr(self.model, 'estimators_'):
-            for tree in self.model.estimators_:
-                tree.verbose = 0
+            for est in self.model.estimators_:
+                if hasattr(est, 'verbose'):
+                    est.verbose = 0
 
     def get_heuristic_cached(self, cube):
-        """Euristica CON CACHE."""
+        """Euristica con paracadute per evitare falsi positivi."""
         if cube.is_solved():
             return 0
 
-        # Hash dello stato
-        if self.pipeline == 'OHE':
-            state_bytes = cube.get_state().tobytes()
-        else:
-            state_bytes = cube.get_manhattan_features().tobytes()
+        # Selezione features in base alla pipeline
+        feat = cube.get_state() if self.pipeline == 'OHE' else cube.get_manhattan_features()
+        state_hash = hash(feat.tobytes())
 
-        state_hash = hash(state_bytes)
-
-        # Check cache
         if state_hash in self.prediction_cache:
             self.cache_hits += 1
             return self.prediction_cache[state_hash]
 
-        # Calcola se non in cache
         self.cache_misses += 1
-        if self.pipeline == 'OHE':
-            features = cube.get_state().reshape(1, -1)
-        else:
-            features = cube.get_manhattan_features().reshape(1, -1)
+        raw_prediction = self.model.predict(feat.reshape(1, -1))[0]
+        heuristic = int(np.round(raw_prediction))
 
-        heuristic = int(np.floor(self.model.predict(features)[0]))
+        if heuristic <= 0:
+            heuristic = 1
+
         self.prediction_cache[state_hash] = heuristic
         return heuristic
 
     def get_heuristic(self, cube):
-        """Alias per retrocompatibilità."""
         return self.get_heuristic_cached(cube)
 
     def solve_beam_ultra(self, start_cube, beam_width, max_depth,
                          restart_prob=0.15, timeout_seconds=None, epsilon=1.0):
-        """Beam Search OTTIMIZZATO con EPSILON ADATTIVA."""
+        """Beam Search con Epsilon Adattiva."""
         start_time = time.time()
+        if start_cube.is_solved(): return [], 0
 
-        if start_cube.is_solved():
-            return [], 0
-
-        # Inizializziamo candidates con: (f_score, h_val, cubo, mosse)
         h_start = self.get_heuristic_cached(start_cube)
         candidates = [(h_start * epsilon, h_start, start_cube, [])]
-
         total_nodes = 0
-        stagnation_counter = 0
         prev_best_h = float('inf')
-        MAX_HEURISTIC_THRESHOLD = 22
-        MAX_NODES = 2000000
+        stagnation_counter = 0
 
         for depth in range(max_depth):
-            # Check Timeout e Nodi
             if timeout_seconds and (time.time() - start_time) > timeout_seconds:
-                print(f"TIMEOUT {timeout_seconds}s (depth={depth}, nodi={total_nodes})")
-                return None, total_nodes
-            if total_nodes > MAX_NODES:
-                print(f"Troppi nodi ({total_nodes}), stop anticipato")
                 return None, total_nodes
 
-            all_child_cubes = []
-            all_child_moves = []
-
-            # --- ESPANSIONE ---
-            # Notare che ora spacchettiamo 4 valori: _, _, parent_cube, parent_moves
+            all_child_data = []
             for _, _, parent_cube, parent_moves in candidates:
                 for move_name in self.moves:
                     for is_rev in [False, True]:
@@ -119,116 +98,78 @@ class RubiksSolver:
                         total_nodes += 1
 
                         if child.is_solved():
-                            elapsed = time.time() - start_time
-                            print(f"Risolto in {elapsed:.2f}s | Mosse: {len(new_moves)}")
+                            # Modificato per log più pulito
+                            print(f"   >> Risolto d={depth + 1} | Nodi={total_nodes}")
                             return new_moves, total_nodes
 
-                        all_child_cubes.append(child)
-                        all_child_moves.append(new_moves)
+                        all_child_data.append((child, new_moves))
 
-            if not all_child_cubes:
-                return None, total_nodes
+            if not all_child_data: return None, total_nodes
 
-            # --- PREDIZIONE BATCH ---
-            X_batch = np.array([c.get_state() for c in all_child_cubes])
+            ### MODIFICA 2: ADATTAMENTO BATCH PER OHE/MANHATTAN ###
+            if self.pipeline == 'OHE':
+                X_batch = np.array([c[0].get_state() for c in all_child_data])
+            else:
+                X_batch = np.array([c[0].get_manhattan_features() for c in all_child_data])
+
             heuristics = self.model.predict(X_batch)
 
-            # --- SELEZIONE PESATA (EPSILON) ---
             combined = []
-            for i in range(len(all_child_cubes)):
-                h = heuristics[i]
-                if h > MAX_HEURISTIC_THRESHOLD:
-                    continue
-
-                # Calcolo f = g + epsilon * h
+            for i, h in enumerate(heuristics):
                 f_score = (depth + 1) + (h * epsilon)
-                # Salviamo h separatamente per monitorare la stagnazione reale
-                combined.append((f_score, h, all_child_cubes[i], all_child_moves[i]))
+                combined.append((f_score, h, all_child_data[i][0], all_child_data[i][1]))
 
-            if not combined:
-                return None, total_nodes
-
-            # Ordiniamo per f_score (primo elemento)
             combined.sort(key=lambda x: x[0])
 
-            # --- MONITORAGGIO STAGNAZIONE (su h reale) ---
-            current_best_h = combined[0][1]  # Prendiamo h reale dal secondo elemento
+            current_best_h = combined[0][1]
             if current_best_h >= prev_best_h:
                 stagnation_counter += 1
             else:
                 stagnation_counter = 0
             prev_best_h = current_best_h
 
-            # --- RESTART E LOG ---
             if np.random.random() < restart_prob or stagnation_counter >= 3:
-                # Stampiamo h_best così capiamo se ci stiamo avvicinando alla soluzione
-                print(f"RESTART d={depth + 1} (h_best={current_best_h:.1f})")
-
-                elite_size = min(10, beam_width // 4)
-                elite = combined[:elite_size]
-
-                rest_size = beam_width - elite_size
-                rest_candidates = combined[elite_size:min(len(combined), elite_size + rest_size * 3)]
-
-                if len(rest_candidates) >= rest_size:
-                    # Usiamo f_score (x[0]) per i pesi probabilistici
-                    weights = np.exp(-np.array([x[0] for x in rest_candidates]) / 10.0)
-                    weights /= weights.sum()
-                    selected = np.random.choice(len(rest_candidates), rest_size, replace=False, p=weights)
-                    rest = [rest_candidates[int(i)] for i in selected]
-                else:
-                    rest = rest_candidates
-
-                candidates = elite + rest
+                elite = combined[:min(10, beam_width // 4)]
+                candidates = elite + random.sample(combined[len(elite):],
+                                                   min(len(combined) - len(elite), beam_width - len(elite)))
                 stagnation_counter = 0
             else:
                 candidates = combined[:beam_width]
 
         return None, total_nodes
 
-    def solve_adaptive(self, cube):
-        """Alias per benchmark vecchio."""
-        return self.solve_adaptive_ultra(cube)
-
     def solve_adaptive_ultra(self, cube):
-        """
-        Strategia adattiva con parametri potenziati per superare le 20 mosse.
-        """
-        stima_iniziale = self.get_heuristic(cube)
-        print(f"\n{'=' * 60}")
-        print(f"[*] Cubo con stima iniziale: {stima_iniziale} mosse")
-        print(f"{'=' * 60}")
+        """Versione OTTIMIZZATA per la consegna - Massimizza il successo su cubi complessi."""
+        # NOTA: Non resettiamo la cache qui per permettere ai livelli 2 e 3
+        # di riutilizzare i calcoli fatti dal livello 1.
+        self.prediction_cache = {}
+        n1 = n2 = n3 = 0
 
-        # LIVELLO 1: Rapido (Cubi 1-12 mosse)
-        print("[*] LIVELLO 1 (Veloce)...")
-        path, nodes_1 = self.solve_beam_ultra(copy.deepcopy(cube), 200, 25, 0.10, 20,epsilon=1.0)
-        if path:
-            print("Risolto al Livello 1!")
-            return path, nodes_1
+        if cube.is_solved(): return [], 0
 
-        # LIVELLO 2: Medio (Cubi 13-17 mosse)
-        print("[*] LIVELLO 2 (Medio-epsilon 1.3)...")
-        path, nodes_2 = self.solve_beam_ultra(copy.deepcopy(cube), 1500, 40, 0.20, 120,epsilon=1.3)
-        if path:
-            print("Risolto al Livello 2!")
-            return path, nodes_1 + nodes_2
+        # --- 1. CHECK-MATE PREVENTIVO ---
+        for move_name in self.moves:
+            for is_rev in [False, True]:
+                test_cube = copy.deepcopy(cube)
+                test_cube.rotate_face(move_name, reverse=is_rev)
+                if test_cube.is_solved():
+                    return [(move_name, is_rev)], 1
 
-        # LIVELLO 3: Intensivo (Cubi 18-20+ mosse)
-        print("[*] LIVELLO 3 (Intensivo - 3 tentativi)...")
-        total_restart_nodes = 0
-        best_path = None
+        # --- 2. LIVELLO 1: Rapido (Cerca la via più breve) ---
+        # Timeout aggressivo: se è facile lo trova subito.
+        path, n1 = self.solve_beam_ultra(copy.deepcopy(cube), 250, 25, 0.1, timeout_seconds=10, epsilon=1.0)
+        if path: return path, n1
 
-        for attempt in range(3):
-            print(f"\n    --- Tentativo {attempt + 1}/3 ---")
-            # Qui il beam_width è 3000 e MAX_NODES (nel metodo sopra) è 2 milioni
-            path, nodes = self.solve_beam_ultra(copy.deepcopy(cube), 1500, 60, 0.40, 180,epsilon=1.6)
-            total_restart_nodes += nodes
+        # --- 3. LIVELLO 2: Espansivo (Bilanciato) ---
+        # Aumentiamo epsilon a 1.4: diamo più peso all'IA per superare l'incertezza.
+        path, n2 = self.solve_beam_ultra(copy.deepcopy(cube), 1200, 55, 0.3, timeout_seconds=45, epsilon=1.2)
+        if path: return path, n1 + n2
 
-            if path:
-                print(f"Risolto al tentativo {attempt + 1}!")
-                return path, nodes_1 + nodes_2 + total_restart_nodes
-            else:
-                print(f"Tentativo {attempt + 1} fallito o timeout.")
+        # --- 4. LIVELLO 3: Esplorazione Estrema (Anti-Stallo) ---
 
-        print("\n[!] Tutti i livelli falliti. Il cubo è troppo complesso per i parametri attuali.")
-        return None, nodes_1 + nodes_2 + total_restart_nodes
+        for attempt in range(2):
+            path, n = self.solve_beam_ultra(copy.deepcopy(cube), 800, 80, 0.7, timeout_seconds=120, epsilon=1.5)
+            n3 += n
+            if path: return path, n1 + n2 + n3
+
+        return None, n1 + n2 + n3
