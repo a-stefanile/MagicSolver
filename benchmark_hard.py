@@ -26,7 +26,7 @@ def run_hard_benchmark(num_cubes=20, filename="benchmark_ohe_HARD.csv"):
         print("-" * 70)
 
         for i in range(1, num_cubes + 1):
-            current_depth = random.randint(18, 20)
+            current_depth = random.randint(17, 20)
             cube = RubiksCube()
             cube.scramble(current_depth)
             stima_iniziale = solver.get_heuristic(cube)
