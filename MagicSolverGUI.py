@@ -201,7 +201,7 @@ class RubiksAI:
             return
 
         # L'IA risolve il cubo attuale
-        solution, nodes = self.ai_solver.solve_adaptive(self.cube_logic)
+        solution, nodes = self.ai_solver.solve_adaptive_ultra(self.cube_logic)
 
         if solution:
             self.solution_moves = solution  # Formato: [('top', False), ...]
@@ -246,7 +246,7 @@ class RubiksAI:
         ImageGrab.grab(bbox=(x, y, x1, y1)).save(os.path.join(self.current_session_dir, f"{filename}.png"))
 
     def scramble_cube(self):
-        moves = self.cube_logic.scramble(n=10) # Numero di scramble
+        moves = self.cube_logic.scramble(n=11) # Numero di scramble
         self.draw_cube("MESCOLATO")
         self.play_btn.config(state=tk.DISABLED)
 
