@@ -9,15 +9,12 @@ from Solver import RubiksSolver
 
 def run_benchmark_ohe(num_cubes=50, filename="benchmark_ohe_20_mosse.csv"):
     # Inizializziamo solo il risolutore OHE
-    # Assicurati che il file magic_solver_model.joblib sia nella cartella
     solver = RubiksSolver(pipeline='OHE')
 
-    # Prepariamo il file CSV
     file_exists = os.path.isfile(filename)
 
     with open(filename, mode='w', newline='') as file:
         writer = csv.writer(file)
-        # Header ottimizzato per tesi
         writer.writerow([
             'Test_ID', 'Mosse_Scramble', 'Stima_IA_Iniziale',
             'Risolto', 'Tempo_Secondi', 'Nodi_Esplorati',
@@ -30,7 +27,6 @@ def run_benchmark_ohe(num_cubes=50, filename="benchmark_ohe_20_mosse.csv"):
 
         for i in range(1, num_cubes + 1):
             # Scegliamo una profondità tra 1 e 20
-            # Se vuoi testare solo i casi difficili, usa random.randint(15, 20)
             current_depth = random.randint(1, 20)
 
             # Creazione del cubo e scramble
@@ -51,7 +47,6 @@ def run_benchmark_ohe(num_cubes=50, filename="benchmark_ohe_20_mosse.csv"):
             risolto = 1 if solution is not None else 0
             lunghezza = len(solution) if solution is not None else 0
 
-            # Calcolo efficienza (nodi al secondo)
             nodi_sec = int(nodes / tempo) if tempo > 0 else 0
 
             # Salvataggio riga
@@ -70,5 +65,4 @@ def run_benchmark_ohe(num_cubes=50, filename="benchmark_ohe_20_mosse.csv"):
 
 
 if __name__ == "__main__":
-    # Per un benchmark serio da tesi, 50 o 100 cubi sono l'ideale
     run_benchmark_ohe(num_cubes=50)
